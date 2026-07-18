@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../database/prisma';
+import { logger } from '../lib/logger';
 import { getStorage } from '../adapters/storage/storage';
 import { getAIProvider } from '../adapters/ai';
 
@@ -18,9 +19,10 @@ healthRouter.get('/ready', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     checks.database = 'ok';
-  } catch {
+  } catch (err) {
     checks.database = 'down';
     healthy = false;
+    logger.error({ msg: 'Readiness database check failed', err });
   }
 
   checks.storage = getStorage().kind;

@@ -3,7 +3,16 @@ import { env } from './config/env';
 import { logger } from './lib/logger';
 import { prisma } from './database/prisma';
 
-function bootstrap(): void {
+async function bootstrap(): Promise<void> {
+  // Connect to the database at startup so connectivity problems are visible immediately
+  // in the logs, rather than surfacing later as a failed request.
+  try {
+    await prisma.$connect();
+    logger.info({ msg: 'Database connected' });
+  } catch (err) {
+    logger.error({ msg: 'Database connection failed at startup', err });
+  }
+
   const app = createApp();
 
   const server = app.listen(env.PORT, () => {
@@ -23,14 +32,19 @@ function bootstrap(): void {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+
+  // An uncaught exception leaves the process in an undefined state, so exit and let the
+  // platform restart it.
   process.on('uncaughtException', (err) => {
     logger.fatal({ msg: 'Uncaught exception', err });
     process.exit(1);
   });
+
+  // A stray unhandled rejection should be logged with its real details (the `err` key
+  // triggers the logger's error serializer), but it must not take the whole server down.
   process.on('unhandledRejection', (reason) => {
-    logger.fatal({ msg: 'Unhandled rejection', reason });
-    process.exit(1);
+    logger.error({ msg: 'Unhandled rejection', err: reason });
   });
 }
 
-bootstrap();
+void bootstrap();
