@@ -5,7 +5,7 @@ const scoreValue = z.number().int().min(SCORE_MIN).max(SCORE_MAX);
 
 /** One improved answer example the assessment surfaces for coaching value. */
 export const improvedExampleSchema = z.object({
-  questionId: z.string().uuid(),
+  questionId: z.string().min(1),
   questionText: z.string(),
   originalAnswer: z.string(),
   improvedAnswer: z.string().min(1),

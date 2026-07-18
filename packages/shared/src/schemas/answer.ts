@@ -6,8 +6,8 @@ import { z } from 'zod';
  * An optional clientRequestId lets the server dedupe rapid retries of the same save.
  */
 export const saveAnswerSchema = z.object({
-  questionId: z.string().uuid('A valid question is required'),
+  questionId: z.string().min(1, 'A valid question is required'),
   text: z.string().max(10000).default(''),
-  clientRequestId: z.string().uuid().optional(),
+  clientRequestId: z.string().optional(),
 });
 export type SaveAnswerInput = z.infer<typeof saveAnswerSchema>;

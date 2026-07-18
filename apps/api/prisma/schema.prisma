@@ -1,16 +1,14 @@
 // Interview IQ database schema.
-// PostgreSQL via Supabase in test, AWS RDS Postgres in production (same dialect).
-// Row Level Security is intentionally disabled: the API is the only DB client and
-// enforces ownership at the service layer. See CLAUDE.md for the full rationale.
+// MongoDB (Atlas in production). Access control lives in the service layer: the API is the
+// only database client and enforces ownership on every query. See CLAUDE.md.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 enum Seniority {
@@ -28,31 +26,30 @@ enum InterviewStatus {
 }
 
 model User {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  email        String    @unique
   name         String
   passwordHash String    @map("password_hash")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
   refreshTokens RefreshToken[]
   resumes       Resume[]
   profiles      Profile[]
   interviews    Interview[]
 
-  @@unique([email])
   @@map("users")
 }
 
 model RefreshToken {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @map("user_id") @db.ObjectId
   tokenHash String    @unique @map("token_hash")
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
   userAgent String?   @map("user_agent")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -62,15 +59,15 @@ model RefreshToken {
 }
 
 model Resume {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String    @map("user_id") @db.Uuid
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @map("user_id") @db.ObjectId
   filename    String
   mimeType    String    @map("mime_type")
   sizeBytes   Int       @map("size_bytes")
   storagePath String    @map("storage_path")
   rawText     String?   @map("raw_text")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   profile Profile?
@@ -80,14 +77,14 @@ model Resume {
 }
 
 model Profile {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  resumeId   String   @unique @map("resume_id") @db.Uuid
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @map("user_id") @db.ObjectId
+  resumeId   String   @unique @map("resume_id") @db.ObjectId
   summary    String
   skills     String[]
-  experience Json     @default("[]")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  editedAt   DateTime @updatedAt @map("edited_at") @db.Timestamptz(6)
+  experience Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  editedAt   DateTime @updatedAt @map("edited_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   resume     Resume      @relation(fields: [resumeId], references: [id], onDelete: Cascade)
@@ -98,16 +95,16 @@ model Profile {
 }
 
 model Interview {
-  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String          @map("user_id") @db.Uuid
-  profileId      String          @map("profile_id") @db.Uuid
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String          @map("user_id") @db.ObjectId
+  profileId      String          @map("profile_id") @db.ObjectId
   role           String
   seniority      Seniority
   jobDescription String?         @map("job_description")
   status         InterviewStatus @default(setup)
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   profile    Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -121,8 +118,8 @@ model Interview {
 }
 
 model Question {
-  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  interviewId String @map("interview_id") @db.Uuid
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  interviewId String @map("interview_id") @db.ObjectId
   order       Int
   text        String
 
@@ -135,12 +132,12 @@ model Question {
 }
 
 model Answer {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  interviewId String   @map("interview_id") @db.Uuid
-  questionId  String   @unique @map("question_id") @db.Uuid
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  interviewId String   @map("interview_id") @db.ObjectId
+  questionId  String   @unique @map("question_id") @db.ObjectId
   text        String
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
   question  Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
@@ -151,17 +148,17 @@ model Answer {
 }
 
 model Assessment {
-  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  interviewId           String   @unique @map("interview_id") @db.Uuid
-  overallScore          Int      @map("overall_score")
-  relevanceScore        Int      @map("relevance_score")
-  clarityScore          Int      @map("clarity_score")
-  structureScore        Int      @map("structure_score")
-  communicationScore    Int      @map("communication_score")
-  strengths             String[]
-  improvements          String[]
-  improvedExample       Json     @map("improved_example")
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  interviewId        String   @unique @map("interview_id") @db.ObjectId
+  overallScore       Int      @map("overall_score")
+  relevanceScore     Int      @map("relevance_score")
+  clarityScore       Int      @map("clarity_score")
+  structureScore     Int      @map("structure_score")
+  communicationScore Int      @map("communication_score")
+  strengths          String[]
+  improvements       String[]
+  improvedExample    Json     @map("improved_example")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
 

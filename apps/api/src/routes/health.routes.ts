@@ -17,7 +17,7 @@ healthRouter.get('/ready', async (_req, res) => {
   let healthy = true;
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$runCommandRaw({ ping: 1 });
     checks.database = 'ok';
   } catch (err) {
     checks.database = 'down';

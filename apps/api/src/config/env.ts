@@ -16,14 +16,20 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(4000),
     CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
-    // Prisma also reads DATABASE_URL/DIRECT_URL directly. Kept optional here so the
-    // process can start for offline work; queries fail clearly if the DB is unreachable.
+    // Prisma reads DATABASE_URL directly (the MongoDB connection string). Kept optional
+    // here so the process can start for offline work; queries fail clearly if unreachable.
     DATABASE_URL: z.string().optional(),
-    DIRECT_URL: z.string().optional(),
 
     // Storage. When Supabase is not configured, the app falls back to local disk.
-    SUPABASE_URL: z.string().url().optional(),
-    SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+    // An empty string is treated as unset so a blank value does not fail url validation.
+    SUPABASE_URL: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().url().optional(),
+    ),
+    SUPABASE_SERVICE_ROLE_KEY: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().optional(),
+    ),
     SUPABASE_STORAGE_BUCKET: z.string().default('resumes'),
     LOCAL_STORAGE_DIR: z.string().default('.storage'),
 

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { seniorityEnum, interviewStatusEnum } from '../constants.js';
 
 export const createInterviewSchema = z.object({
-  profileId: z.string().uuid('A valid profile is required'),
+  profileId: z.string().min(1, 'A valid profile is required'),
   role: z.string().min(2, 'Target role is required').max(120).trim(),
   seniority: seniorityEnum,
   jobDescription: z.string().max(8000).optional(),
