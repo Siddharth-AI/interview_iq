@@ -1,6 +1,8 @@
 import type { ApiResponse } from '@interview-iq/shared';
 
-const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api`;
+// When NEXT_PUBLIC_API_URL is empty or unset (production behind the Vercel /api proxy),
+// requests go to the same origin at /api. Local development sets it to the API origin.
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 export class ApiClientError extends Error {
   constructor(
