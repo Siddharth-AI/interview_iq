@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Local file storage fallback (uploaded resumes in dev)
+.storage/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+*.tsbuildinfo
+
+# Env files (NEVER commit real env files)
+.env
+.env.*
+!.env.example
+
+# Secrets & keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+secrets/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Database
+*.sqlite
+*.db
+dump.sql
+*.dump
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.turbo/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/settings.json
+.idea/
+*.iml
+
+# Docker
+.dockerignore
+
+# Lock files (commit these — they ensure reproducible installs)
+# package-lock.json  ← DO commit this
+# yarn.lock          ← DO commit this
+
+# Prisma
+prisma/*.db
+
+# Generated
+**/*.generated.ts
+**/generated/
+
+/blueprint
+
+.claude
+/agent_docs
+/docs
+DEPLOYMENT.md
+plan.md
+CLAUDE.md
+.claudeignore
+SECURITY.md

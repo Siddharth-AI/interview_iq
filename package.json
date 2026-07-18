@@ -1,0 +1,29 @@
+{
+  "name": "interview-iq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Interview Practice and Assessment application",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "db:generate": "pnpm --filter @interview-iq/api db:generate",
+    "db:push": "pnpm --filter @interview-iq/api db:push",
+    "db:migrate": "pnpm --filter @interview-iq/api db:migrate",
+    "db:seed": "pnpm --filter @interview-iq/api db:seed",
+    "db:studio": "pnpm --filter @interview-iq/api db:studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  }
+}
