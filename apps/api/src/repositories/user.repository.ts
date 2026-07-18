@@ -2,11 +2,11 @@ import { prisma } from '../database/prisma';
 
 export const userRepository = {
   findByEmail(email: string) {
-    return prisma.user.findFirst({ where: { email: email.toLowerCase(), deletedAt: null } });
+    return prisma.user.findFirst({ where: { email: email.toLowerCase() } });
   },
 
   findById(id: string) {
-    return prisma.user.findFirst({ where: { id, deletedAt: null } });
+    return prisma.user.findFirst({ where: { id } });
   },
 
   create(data: { email: string; name: string; passwordHash: string }) {

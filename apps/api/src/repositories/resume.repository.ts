@@ -13,6 +13,6 @@ export const resumeRepository = {
   },
 
   findByIdForUser(id: string, userId: string) {
-    return prisma.resume.findFirst({ where: { id, userId, deletedAt: null } });
+    return prisma.resume.findFirst({ where: { id, userId } });
   },
 };

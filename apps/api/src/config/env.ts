@@ -16,15 +16,11 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(4000),
     CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
-    // Prisma also reads DATABASE_URL/DIRECT_URL directly. Kept optional here so the
-    // process can start for offline work; queries fail clearly if the DB is unreachable.
+    // Prisma reads DATABASE_URL directly (the MongoDB connection string). Kept optional
+    // here so the process can start for offline work; queries fail clearly if unreachable.
     DATABASE_URL: z.string().optional(),
-    DIRECT_URL: z.string().optional(),
 
-    // Storage. When Supabase is not configured, the app falls back to local disk.
-    SUPABASE_URL: z.string().url().optional(),
-    SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-    SUPABASE_STORAGE_BUCKET: z.string().default('resumes'),
+    // Uploaded resumes are stored on local disk in this directory.
     LOCAL_STORAGE_DIR: z.string().default('.storage'),
 
     // Auth
@@ -86,6 +82,3 @@ export const env = parsed.data;
 export type Env = typeof env;
 
 export const MAX_FILE_SIZE_BYTES = env.MAX_FILE_SIZE_MB * 1024 * 1024;
-
-/** True when Supabase Storage is configured; otherwise the app uses local disk storage. */
-export const useSupabaseStorage = Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
