@@ -2,9 +2,9 @@
 
 AI interview practice and assessment. A candidate uploads a resume, reviews an extracted profile, runs a five question personalised mock interview, and receives a scored assessment with strengths, improvement areas, and one improved answer example. Completed assessments are saved to a history screen.
 
-Built with TypeScript end to end: a Next.js frontend, an Express backend, Supabase Postgres via Prisma, and a swappable AI layer (OpenAI with a deterministic mock fallback).
+Built with TypeScript end to end: a Next.js frontend, an Express backend, MongoDB via Prisma, and a swappable AI layer (OpenAI with a deterministic mock fallback).
 
-> Stack: TypeScript, Next.js (App Router), Express, Prisma, PostgreSQL (Supabase), OpenAI. Monorepo via pnpm and Turborepo.
+> Stack: TypeScript, Next.js (App Router), Express, Prisma, MongoDB (Atlas), OpenAI. Monorepo via pnpm and Turborepo.
 
 ## Table of contents
 
@@ -48,8 +48,8 @@ flowchart LR
     OpenAI["OpenAIProvider"]
     Mock["MockProvider (deterministic)"]
   end
-  DB[("Supabase Postgres<br/>Prisma")]
-  Store[("Supabase Storage<br/>private bucket")]
+  DB[("MongoDB Atlas<br/>Prisma")]
+  Store[("Local disk<br/>uploaded files")]
 
   Web -- "fetch, httpOnly cookies" --> API
   API --> DB
@@ -105,7 +105,7 @@ Completing an interview is the most failure sensitive path: it calls the AI prov
 sequenceDiagram
   participant U as Browser
   participant A as API (service layer)
-  participant DB as Postgres
+  participant DB as MongoDB
   participant AI as AIProvider
 
   U->>A: POST /interviews/:id/complete
@@ -141,25 +141,25 @@ erDiagram
   Interview ||--|| Assessment : produces
   Question ||--|| Answer : "answered by"
 
-  User { uuid id PK }
-  Interview { uuid id PK "status: setup|in_progress|completed" }
-  Answer { uuid id "unique(interviewId, questionId)" }
-  Assessment { uuid id "unique(interviewId)" }
+  User { objectId id PK }
+  Interview { objectId id PK "status: setup|in_progress|completed" }
+  Answer { objectId id "unique(interviewId, questionId)" }
+  Assessment { objectId id "unique(interviewId)" }
 ```
 
-Every table uses a UUID primary key and `TIMESTAMPTZ` timestamps. Foreign keys are indexed. Uniqueness constraints enforce idempotency at the database layer, not just in code. User facing entities carry a soft delete column.
+Each collection uses an ObjectId primary key and stored timestamps. Fields used to join or filter are indexed. Unique indexes enforce idempotency at the database layer, not just in code (for example a single answer per interview and question, and a single assessment per interview).
 
 ## Key decisions and trade-offs
 
 | Decision | Why | Trade-off accepted |
 | --- | --- | --- |
-| Row Level Security disabled | The browser never touches the database. The API is the only client and enforces ownership on every query. RLS would be redundant. | Access control correctness lives in the service layer, so repository queries must always filter by owner. Enforced consistently and covered by a test. |
-| Supabase now, AWS RDS later | Same Postgres dialect. Migrating is a connection string change, no code change. | Supabase free tier pauses on inactivity; fine for a demo. |
+| Access control in the service layer | The browser never touches the database. The API is the only client and enforces ownership on every query. MongoDB has no row level access control, so this is where it belongs. | Repository queries must always filter by owner. Enforced consistently and covered by a test. |
+| MongoDB Atlas now, dedicated later | A managed cluster to start. Moving to a larger Atlas tier or a self hosted MongoDB is a connection string change, no code change. | Atlas free tier (M0) is a shared cluster; fine for a demo. |
 | Custom JWT with refresh rotation | Full control of the auth model, short lived access token plus a rotating refresh token whose hash only is stored. | More code than a hosted auth provider, but no third party dependency and a clear security story. |
 | AI behind one interface, mock fallback | The product is graded on engineering, not on a paid AI account. Any provider failure falls back to a deterministic mock, so the flow never fails. | The mock is heuristic, not intelligent; it exists for resilience and reproducible tests, not quality. |
 | Monorepo with a shared package | One source of truth for zod schemas and types. The API contract cannot drift between client and server. | Slightly more build wiring (Turborepo handles ordering). |
 | React Context and hooks, not Redux | Client state is small: the authenticated user plus per screen data. Context plus local state fits the scope. | No global cache; each screen fetches its own data. TanStack Query would be the next step if caching mattered. |
-| `prisma db push` for schema sync | Supabase does not expose a shadow database for `migrate dev`. `db push` syncs the schema without one. | No migration history in this setup; `migrate deploy` with committed migrations is the production path. |
+| `prisma db push` for schema sync | Prisma uses `db push` for MongoDB; the SQL style `migrate dev` workflow does not apply to a document database. | Index and shape changes are applied directly; there is no SQL migration history. |
 | Next.js 15 and React 19 | Current stable. Next 14 hit a static generation bug on the internal error pages. | Latest majors, kept current on purpose. |
 
 ## API
@@ -190,7 +190,7 @@ Every response uses one envelope: `{ success, data?, error?, requestId }`. Error
 - Idempotency: answers upsert on `(interviewId, questionId)`; completion returns the existing assessment if present.
 - Fallback: AI failures fall back to the deterministic mock. The user flow never returns a 500 from the AI layer.
 - Validation: zod on every input and on all AI output, which is repaired or rejected before it is trusted.
-- Files: MIME and extension checks, a size cap, in memory buffering, and a private storage bucket. Files never sit in a public webroot.
+- Files: MIME and extension checks, a size cap, in memory buffering, and local disk storage outside any public webroot. The extracted resume text is stored in the database, so the raw file blob is not read back by any flow.
 - Auth: bcrypt password hashing, short lived access token in an httpOnly cookie, rotating refresh token stored only as a SHA-256 hash.
 - Rate limiting on auth and on the expensive upload and scoring endpoints.
 - Structured logging with a request id on every request and redaction of secrets. Liveness and readiness endpoints, where readiness touches the database.
@@ -198,7 +198,7 @@ Every response uses one envelope: `{ success, data?, error?, requestId }`. Error
 
 ## Getting started
 
-Prerequisites: Node 20 or newer, pnpm 9, and a Supabase project (or any Postgres database).
+Prerequisites: Node 20 or newer, pnpm 9, and a MongoDB database (a free MongoDB Atlas cluster works).
 
 ```bash
 # 1. Install
@@ -206,14 +206,13 @@ pnpm install
 
 # 2. Configure the API
 cp .env.example apps/api/.env
-# Fill DATABASE_URL and DIRECT_URL. Leave AI_PROVIDER=mock to run with no OpenAI key.
-# Leave the SUPABASE_* values blank to store uploads on local disk.
+# Fill DATABASE_URL with your MongoDB connection string.
+# Leave AI_PROVIDER=mock to run with no OpenAI key. Uploads go to local disk.
 
 # 3. Configure the web app
 echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > apps/web/.env.local
 
-# 4. Create the schema and seed demo data
-# db:push syncs the schema directly and needs no shadow database, which suits Supabase.
+# 4. Sync the schema (indexes) and seed demo data
 pnpm db:push
 pnpm db:seed
 
@@ -238,14 +237,14 @@ Set `AI_PROVIDER=mock` (the default) to run the entire flow offline with determi
 
 See [.env.example](.env.example) for the full annotated list. Summary:
 
-- Database: `DATABASE_URL` (pooled) and `DIRECT_URL` (schema push and migrations).
-- Storage: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`, or the local disk fallback via `LOCAL_STORAGE_DIR`.
+- Database: `DATABASE_URL`, the MongoDB connection string (include a database name, for example `.../interview_iq?...`).
+- Storage: `LOCAL_STORAGE_DIR` for uploaded files on local disk.
 - Auth: `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, and their expiry values.
 - AI: `AI_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_MODEL`.
 - Limits: `MAX_FILE_SIZE_MB`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`.
 - Web: `NEXT_PUBLIC_API_URL`.
 
-Note for Supabase: the direct host `db.<ref>.supabase.co:5432` is IPv6 only and is often unreachable from home networks. Use the session pooler for `DIRECT_URL` (`postgres.<ref>:PASSWORD@aws-0-<region>.pooler.supabase.com:5432`) and the transaction pooler on port 6543 for `DATABASE_URL`.
+Note for MongoDB Atlas: under Network Access, allow `0.0.0.0/0` so a cloud host can connect, and URL encode any special characters in the database user password.
 
 ## Testing
 
@@ -264,9 +263,9 @@ Free tier friendly split:
 
 - Frontend on Vercel (Next.js).
 - Backend on Render as a web service (Node).
-- Database and storage on Supabase.
+- Database on MongoDB Atlas.
 
-Because the web app and API sit on different domains, prefer proxying `/api` from the web host to the backend so authentication cookies stay first party. Set `CORS_ORIGIN` on the API to the web origin, and provide the same environment variables listed above on the backend host. Production uses AWS RDS Postgres in a private subnet with the identical backend enforced access model; the change is a connection string.
+Because the web app and API sit on different domains, prefer proxying `/api` from the web host to the backend so authentication cookies stay first party. Set `CORS_ORIGIN` on the API to the web origin, and provide the environment variables listed above on the backend host. See [DEPLOYMENT.md](DEPLOYMENT.md) for the full step by step guide.
 
 ## Accessibility and design
 
