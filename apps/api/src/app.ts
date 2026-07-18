@@ -20,11 +20,14 @@ export function createApp(): Application {
   app.use(helmet());
   app.disable('x-powered-by');
 
-  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+  // Normalise a trailing slash so a value like "https://app.vercel.app/" still matches
+  // the browser Origin header, which never carries a trailing slash.
+  const stripTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => stripTrailingSlash(o.trim()));
   app.use(
     cors({
       origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.includes(stripTrailingSlash(origin))) {
           callback(null, true);
           return;
         }

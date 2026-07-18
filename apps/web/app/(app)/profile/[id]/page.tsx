@@ -176,24 +176,52 @@ export default function ProfilePage() {
             <div className="space-y-3">
               <span className="block text-sm font-medium">Experience</span>
               {experience.map((entry, index) => (
-                <div key={index} className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-3">
-                  <Input
-                    aria-label="Job title"
-                    value={entry.title}
-                    onChange={(e) => updateExperience(index, { title: e.target.value })}
-                  />
-                  <Input
-                    aria-label="Company"
-                    placeholder="Company"
-                    value={entry.company}
-                    onChange={(e) => updateExperience(index, { company: e.target.value })}
-                  />
-                  <Input
-                    aria-label="Duration"
-                    placeholder="Duration"
-                    value={entry.duration}
-                    onChange={(e) => updateExperience(index, { duration: e.target.value })}
-                  />
+                <div
+                  key={index}
+                  className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-3"
+                >
+                  <div>
+                    <label
+                      htmlFor={`exp-${index}-title`}
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
+                    >
+                      Role or title
+                    </label>
+                    <Input
+                      id={`exp-${index}-title`}
+                      placeholder="e.g. Senior Software Engineer"
+                      value={entry.title}
+                      onChange={(e) => updateExperience(index, { title: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`exp-${index}-company`}
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
+                    >
+                      Company
+                    </label>
+                    <Input
+                      id={`exp-${index}-company`}
+                      placeholder="e.g. Acme Corp"
+                      value={entry.company}
+                      onChange={(e) => updateExperience(index, { company: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`exp-${index}-duration`}
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
+                    >
+                      Duration
+                    </label>
+                    <Input
+                      id={`exp-${index}-duration`}
+                      placeholder="e.g. 2021 - Present"
+                      value={entry.duration}
+                      onChange={(e) => updateExperience(index, { duration: e.target.value })}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
