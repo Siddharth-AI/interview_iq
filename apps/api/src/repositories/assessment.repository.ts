@@ -23,7 +23,7 @@ export const assessmentRepository = {
   /** Ownership is enforced by joining through the interview to the user. */
   findByIdForUser(id: string, userId: string) {
     return prisma.assessment.findFirst({
-      where: { id, interview: { userId, deletedAt: null } },
+      where: { id, interview: { userId } },
       include: { interview: { select: { role: true } } },
     });
   },

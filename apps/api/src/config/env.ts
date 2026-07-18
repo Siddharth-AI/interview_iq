@@ -20,17 +20,7 @@ const envSchema = z
     // here so the process can start for offline work; queries fail clearly if unreachable.
     DATABASE_URL: z.string().optional(),
 
-    // Storage. When Supabase is not configured, the app falls back to local disk.
-    // An empty string is treated as unset so a blank value does not fail url validation.
-    SUPABASE_URL: z.preprocess(
-      (v) => (v === '' ? undefined : v),
-      z.string().url().optional(),
-    ),
-    SUPABASE_SERVICE_ROLE_KEY: z.preprocess(
-      (v) => (v === '' ? undefined : v),
-      z.string().optional(),
-    ),
-    SUPABASE_STORAGE_BUCKET: z.string().default('resumes'),
+    // Uploaded resumes are stored on local disk in this directory.
     LOCAL_STORAGE_DIR: z.string().default('.storage'),
 
     // Auth
@@ -92,6 +82,3 @@ export const env = parsed.data;
 export type Env = typeof env;
 
 export const MAX_FILE_SIZE_BYTES = env.MAX_FILE_SIZE_MB * 1024 * 1024;
-
-/** True when Supabase Storage is configured; otherwise the app uses local disk storage. */
-export const useSupabaseStorage = Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);

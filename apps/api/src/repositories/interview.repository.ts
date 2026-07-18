@@ -28,7 +28,7 @@ export const interviewRepository = {
 
   findByIdForUser(id: string, userId: string) {
     return prisma.interview.findFirst({
-      where: { id, userId, deletedAt: null },
+      where: { id, userId },
       include: {
         questions: { orderBy: { order: 'asc' } },
         answers: true,
@@ -40,7 +40,7 @@ export const interviewRepository = {
 
   listForUser(userId: string) {
     return prisma.interview.findMany({
-      where: { userId, deletedAt: null },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: { assessment: { select: { id: true, overallScore: true } } },
     });
