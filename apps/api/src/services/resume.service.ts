@@ -10,6 +10,33 @@ import { resumeRepository } from '../repositories/resume.repository';
 import { profileRepository } from '../repositories/profile.repository';
 import { toProfileResponse } from './mappers';
 
+// Signals that a document is actually a resume. A real resume matches several of these;
+// an unrelated PDF (an invoice, an article) matches few, so we reject it before spending
+// an AI call or creating a garbage profile.
+const RESUME_SIGNALS: RegExp[] = [
+  /\bexperience\b/,
+  /\beducation\b/,
+  /\bskills?\b/,
+  /\bprojects?\b/,
+  /\b(employment|internship|intern)\b/,
+  /\b(summary|objective|profile)\b/,
+  /\b(certification|certificate)\b/,
+  /\b(bachelor|master|b\.?tech|m\.?tech|b\.?sc|m\.?sc|degree|diploma)\b/,
+  /\b(university|college|institute)\b/,
+  /\b(engineer|developer|manager|analyst|designer|consultant|architect|scientist)\b/,
+  /[\w.+-]+@[\w-]+\.[\w.]+/, // an email address
+  /\b(19|20)\d{2}\b/, // a year, common in date ranges
+];
+
+const MIN_RESUME_SIGNALS = 3;
+
+/** Heuristic content check: does the extracted text read like a resume? */
+export function looksLikeResume(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hits = RESUME_SIGNALS.reduce((count, pattern) => count + (pattern.test(lower) ? 1 : 0), 0);
+  return hits >= MIN_RESUME_SIGNALS;
+}
+
 export const resumeService = {
   /**
    * Full upload pipeline: extract text, derive a candidate profile via the AI provider,
@@ -22,6 +49,11 @@ export const resumeService = {
     const text = await extractResumeText(file.buffer, file.mimetype);
     if (text.trim().length < 30) {
       throw unprocessable('This resume appears to be empty or unreadable');
+    }
+    if (!looksLikeResume(text)) {
+      throw unprocessable(
+        'This file does not look like a resume. Please upload your resume as a PDF or DOCX.',
+      );
     }
 
     const ai = getAIProvider();
